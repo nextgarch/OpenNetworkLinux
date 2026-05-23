@@ -11,13 +11,15 @@
 # Mellanox driver packages (hw-management, sx-kernel) removed - no source in
 # the aps-networks fork and not needed for stordis platforms.
 #
-# Kernel modules: the switch boots into 4.19.81, so ship its modules (not the
-# legacy 3.16). The 3.16 modules deb was ~280KB of unused .ko files; the 4.19
-# modules deb contains the iptables/bridge/netfilter .ko files docker needs.
+# Kernel modules: ship matching the kernel chosen by the platform-config.
+# The stordis BF2556X-1T platform picks 4.14 (matches the original working
+# ONL build that came with the switch and matches the bf_kdrv.ko prebuilt
+# inside the stratumproject/stratum-bfrt:9.2.0 image). 4.14 also already
+# enables BRIDGE_NETFILTER=y and IP_NF_RAW=y, which 4.19 didn't.
 # - onl-kernel-3.16-lts-x86-64-all-modules
 # - onl-kernel-4.9-lts-x86-64-all-modules
-# - onl-kernel-4.14-lts-x86-64-all-modules
-- onl-kernel-4.19-lts-x86-64-all-modules
+- onl-kernel-4.14-lts-x86-64-all-modules
+# - onl-kernel-4.19-lts-x86-64-all-modules
 # - onl-kernel-5.4-lts-x86-64-all-modules
 - efibootmgr
 - gdisk
