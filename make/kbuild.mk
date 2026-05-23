@@ -143,6 +143,7 @@ kpatched: $(K_SOURCE_DIR)/.PATCHED
 #
 setup: $(K_SOURCE_DIR)/.PATCHED
 	cp $(K_CONFIG) $(K_SOURCE_DIR)/.config
+	$(MAKE) -C $(K_SOURCE_DIR) ARCH=$(ARCH) olddefconfig
 
 #
 # Kernel build command.
