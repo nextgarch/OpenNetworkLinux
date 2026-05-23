@@ -302,7 +302,9 @@ class OnlRfsBuilder(object):
 
     DEFAULTS = dict(
         DEBIAN_SUITE='wheezy',
-        DEBIAN_MIRROR='mirrors.kernel.org/debian/',
+        # Was mirrors.kernel.org/debian/ but jessie (and earlier) was
+        # purged from kernel.org and is only on archive.debian.org now.
+        DEBIAN_MIRROR='archive.debian.org/debian/',
         APT_CACHE='127.0.0.1:3142/'
         )
 
