@@ -2,48 +2,116 @@
 #
 # Postinstall hook (runs OUTSIDE the chroot, after onl-install finishes).
 #
-# Ensure /mnt/onl/boot/grub/grub.cfg references the stable /kernel-active
-# symlink and that the symlink resolves to the newest kernel binary on
-# the ONL-BOOT partition. This bulletproofs first-boot after upgrades
-# where the install path doesn't reliably regenerate grub.cfg, leaving
-# it pointing at a kernel filename the new install no longer ships and
-# producing:
+# Goal: guarantee /mnt/onl/boot/grub/grub.cfg references a stable
+# kernel-active symlink instead of a version-specific kernel filename
+# (e.g. kernel-4.19-lts-x86_64-all). Upgrade installs (onie-nos-install
+# from a running ONL) have been observed to leave stale grub.cfg
+# references to a kernel filename the new install no longer ships,
+# producing at first boot:
 #
 #   error: file `/kernel-X.Y-lts-x86_64-all' not found.
 #   error: you need to load the kernel first.
 #
-# Idempotent: if installGrubCfg already wrote /kernel-active and
-# installLoader already created the symlink, this is a no-op.
+# Strategy: don't trust the install path. Mount ONL-BOOT, locate the
+# (newest) kernel binary on it, write a self-contained grub.cfg from
+# scratch referencing /kernel-active, and (re)create the symlink.
 #
-set -e
-chroot_dir="$1"
+# Drops /mnt/onl/boot/.postinstall.ran with a timestamp so future
+# debugging can confirm the hook ran (it's mounted ro normally; only
+# visible if you `mount -o remount,rw /mnt/onl/boot`).
+#
+set -eu
+chroot_dir="${1:-}"
 
+log() { echo "postinstall(grub): $*"; }
+
+# --- find ONL-BOOT device, trying several methods ---
+dev=""
 dev=$(blkid -L ONL-BOOT 2>/dev/null || true)
 if [ -z "$dev" ]; then
-    echo "postinstall(grub.cfg fix): no ONL-BOOT partition found, skipping"
+    dev=$(blkid -t LABEL=ONL-BOOT -o device 2>/dev/null | head -1 || true)
+fi
+if [ -z "$dev" ]; then
+    for p in /dev/sda3 /dev/sda4 /dev/sda5 /dev/nvme0n1p3 /dev/nvme0n1p4; do
+        [ -b "$p" ] || continue
+        if [ "$(blkid "$p" -s LABEL -o value 2>/dev/null || true)" = "ONL-BOOT" ]; then
+            dev=$p; break
+        fi
+    done
+fi
+if [ -z "$dev" ]; then
+    log "cannot find ONL-BOOT partition, skipping"
     exit 0
 fi
+log "ONL-BOOT is $dev"
 
+# --- mount it ---
 mnt=$(mktemp -d)
-trap 'umount "$mnt" 2>/dev/null || true; rmdir "$mnt" 2>/dev/null || true' EXIT
+cleanup() { umount "$mnt" 2>/dev/null || true; rmdir "$mnt" 2>/dev/null || true; }
+trap cleanup EXIT
 mount "$dev" "$mnt"
 
-# Pick newest kernel binary on the partition (newest mtime, x86-64 naming)
+# --- locate newest kernel binary ---
 kern=$(ls -t "$mnt"/kernel-*-x86_64-all 2>/dev/null | head -1 | xargs -r basename || true)
 if [ -z "$kern" ]; then
-    echo "postinstall(grub.cfg fix): no kernel-*-x86_64-all on ONL-BOOT, skipping"
+    log "no kernel-*-x86_64-all on ONL-BOOT, skipping"
     exit 0
 fi
+log "newest kernel: $kern"
 
-# (Re)create kernel-active symlink
+# --- (re)create kernel-active symlink ---
 rm -f "$mnt/kernel-active"
 ln -s "$kern" "$mnt/kernel-active"
-echo "postinstall(grub.cfg fix): kernel-active -> $kern"
+log "kernel-active -> $kern"
 
-# Patch grub.cfg's linux line if present
-if [ -f "$mnt/grub/grub.cfg" ]; then
-    sed -i 's|linux /kernel-[^ ]*|linux /kernel-active|' "$mnt/grub/grub.cfg"
-    echo "postinstall(grub.cfg fix): patched $mnt/grub/grub.cfg to use /kernel-active"
+# --- find platform string (for the initrd filename and onl_platform=) ---
+platform=""
+if [ -n "$chroot_dir" ] && [ -f "$chroot_dir/etc/onl/platform" ]; then
+    platform=$(cat "$chroot_dir/etc/onl/platform")
 fi
+if [ -z "$platform" ]; then
+    # fall back: look for a *.cpio.gz on ONL-BOOT and strip the suffix
+    platform=$(ls "$mnt"/*.cpio.gz 2>/dev/null | head -1 | xargs -r basename | sed 's/\.cpio\.gz$//' || true)
+fi
+if [ -z "$platform" ]; then
+    log "cannot determine platform, skipping grub.cfg rewrite"
+    exit 0
+fi
+log "platform: $platform"
+
+# --- write grub.cfg from scratch ---
+mkdir -p "$mnt/grub"
+cat > "$mnt/grub/grub.cfg" <<EOF
+serial --port=0x3f8 --speed=115200 --word=8 --parity=no --stop=1
+terminal_input serial
+terminal_output serial
+set timeout=5
+
+load_env
+if [ "\${saved_entry}" ] ; then
+   set default="\${saved_entry}"
+fi
+
+menuentry "Open Network Linux" {
+  search --no-floppy --label --set=root ONL-BOOT
+  set saved_entry="0"
+  save_env saved_entry
+  echo 'Loading Open Network Linux ...'
+  insmod gzio
+  insmod part_msdos
+  linux /kernel-active nopat console=ttyS0,115200n8 onl_platform=$platform
+  initrd /$platform.cpio.gz
+}
+
+menuentry "ONIE" {
+  search --no-floppy --label --set=root ONIE-BOOT
+  echo 'Loading ONIE ...'
+  chainloader +1
+}
+EOF
+log "grub.cfg rewritten to use /kernel-active"
+
+# --- marker so we can confirm the hook ran on the installed system ---
+date -u +"%Y-%m-%dT%H:%M:%SZ kernel=$kern platform=$platform" > "$mnt/.postinstall.ran"
 
 exit 0
