@@ -22,7 +22,7 @@ MKINSTALLER_OPTS	= \
   --initrd onl-loader-initrd:$(ARCH) onl-loader-initrd-$(ARCH).cpio.gz \
   --swi onl-swi:$(ARCH) \
   --preinstall-script $(ONL)/builds/any/installer/sample-preinstall.sh \
-  --postinstall-script $(ONL)/builds/any/installer/sample-postinstall.sh \
+  --postinstall-script $(ONL)/builds/any/installer/onl-grub-cfg-postinstall.sh \
   --plugin $(ONL)/builds/any/installer/sample-preinstall.py \
   --plugin $(ONL)/builds/any/installer/sample-postinstall.py \
   # THIS LINE INTENTIONALLY LEFT BLANK
