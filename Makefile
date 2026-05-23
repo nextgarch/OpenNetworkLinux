@@ -23,9 +23,20 @@ endef
 $(foreach a,$(ALL_ARCHES),$(eval $(call build_arch_template,$(a))))
 
 
-# Available build architectures based on the current suite
+# Available build architectures based on the current suite.
+#
+# jessie default trimmed to amd64 only - the powerpc loader-initrd target
+# dies with "Package onl-platform-config-x86-64-stordis-bf2556x-1t-r0:
+# powerpc does not exist" because PLATFORMS gets inherited from amd64
+# (onlpm itself returns the right per-arch list when queried directly,
+# but the powerpc loader Makefile ends up with x86-64 platforms anyway).
+# armel hits the same. The amd64 installer was already in RELEASE/ by
+# then, so the failure is purely cosmetic but trips up `make all` exit
+# status. Restore with:
+#   make BUILD_ARCHES_jessie="amd64 powerpc armel" all
+# if cross-arch is actually needed.
 BUILD_ARCHES_wheezy := amd64 powerpc
-BUILD_ARCHES_jessie := amd64 powerpc armel
+BUILD_ARCHES_jessie := amd64
 BUILD_ARCHES_stretch := arm64 amd64 armel armhf
 
 # Build available architectures by default.
