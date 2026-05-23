@@ -510,9 +510,7 @@ menuentry %(boot_menu_entry)s {
   echo 'Loading %(boot_loading_name)s ...'
   insmod gzio
   insmod part_msdos
-  # Use the kernel-active symlink (managed by installLoader); grub.cfg
-  # stays valid across kernel version swaps without needing regeneration.
-  linux /kernel-active %(args)s onl_platform=%(platform)s
+  linux /%(kernel)s %(args)s onl_platform=%(platform)s
   initrd /%(platform)s.cpio.gz
 }
 
@@ -707,19 +705,6 @@ class GrubInstaller(SubprocessMixin, Base):
                 self.installerCopy(b, dst, optional=True)
             [_cp(e) for e in kernels]
             _cp(initrd, "%s.cpio.gz" % self.im.installerConf.installer_platform)
-
-            # Maintain a stable "kernel-active" symlink on ONL-BOOT pointing
-            # at the platform-config-selected kernel. grub.cfg references the
-            # symlink (not a version-specific name) so upgrades that swap the
-            # kernel version don't leave grub looking for a file that no
-            # longer exists.
-            kc = self.im.platformConf['grub']['kernel']
-            ktarget = kc['='] if type(kc) == dict else kc
-            klink = os.path.join(ctx.dir, 'kernel-active')
-            if os.path.lexists(klink):
-                os.unlink(klink)
-            os.symlink(ktarget, klink)
-            self.log.info("kernel-active -> %s", ktarget)
 
         return 0
 
