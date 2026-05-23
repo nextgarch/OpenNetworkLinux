@@ -8,12 +8,16 @@
 - smartmontools
 - grub2
 - onl-upgrade
-- hw-management
-- sx-kernel
-- onl-kernel-3.16-lts-x86-64-all-modules
+# Mellanox driver packages (hw-management, sx-kernel) removed - no source in
+# the aps-networks fork and not needed for stordis platforms.
+#
+# Kernel modules: the switch boots into 4.19.81, so ship its modules (not the
+# legacy 3.16). The 3.16 modules deb was ~280KB of unused .ko files; the 4.19
+# modules deb contains the iptables/bridge/netfilter .ko files docker needs.
+# - onl-kernel-3.16-lts-x86-64-all-modules
 # - onl-kernel-4.9-lts-x86-64-all-modules
 # - onl-kernel-4.14-lts-x86-64-all-modules
-# - onl-kernel-4.19-lts-x86-64-all-modules
+- onl-kernel-4.19-lts-x86-64-all-modules
 # - onl-kernel-5.4-lts-x86-64-all-modules
 - efibootmgr
 - gdisk
