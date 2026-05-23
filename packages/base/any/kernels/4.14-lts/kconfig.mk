@@ -21,7 +21,13 @@
 THIS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 K_MAJOR_VERSION := 4
 K_PATCH_LEVEL := 14
-K_SUB_LEVEL := 151
+# Pinned to 4.14.49 to match the prebuilt bf_kdrv.ko vermagic shipped in
+# stratumproject/stratum-bfrt:9.2.0 (which only has .ko files for
+# 4.14.49, 4.15.0, 4.9.75, 3.16.56). Loading bf_kdrv against 4.14.151
+# fails with "version magic '4.14.49-OpenNetworkLinux SMP mod_unload '
+# should be '4.14.151-OpenNetworkLinux SMP mod_unload '". Stratum can't
+# init the ASIC without that driver.
+K_SUB_LEVEL := 49
 K_SUFFIX :=
 K_PATCH_DIR := $(THIS_DIR)/patches
 K_MODSYNCLIST := tools/objtool
