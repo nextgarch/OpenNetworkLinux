@@ -12,13 +12,13 @@
 # the aps-networks fork and not needed for stordis platforms.
 #
 # Kernel modules: ship matching the kernel chosen by the platform-config.
-# The stordis BF2556X-1T platform picks 4.14 (matches the original working
-# ONL build that came with the switch and matches the bf_kdrv.ko prebuilt
-# inside the stratumproject/stratum-bfrt:9.2.0 image). 4.14 also already
-# enables BRIDGE_NETFILTER=y and IP_NF_RAW=y, which 4.19 didn't.
+# Stordis platforms target 4.9.75 — it's the only kernel for which the
+# stratum-bfrt:9.2.0 image ships a bf_kdrv.ko that doesn't reference
+# retpoline thunk symbols (which our builder's gcc 4.9.2 can't generate).
+# 4.14.49's bf_kdrv had 4 retpoline thunk refs, broken; 4.9.75 has 0.
 # - onl-kernel-3.16-lts-x86-64-all-modules
-# - onl-kernel-4.9-lts-x86-64-all-modules
-- onl-kernel-4.14-lts-x86-64-all-modules
+- onl-kernel-4.9-lts-x86-64-all-modules
+# - onl-kernel-4.14-lts-x86-64-all-modules
 # - onl-kernel-4.19-lts-x86-64-all-modules
 # - onl-kernel-5.4-lts-x86-64-all-modules
 - efibootmgr
